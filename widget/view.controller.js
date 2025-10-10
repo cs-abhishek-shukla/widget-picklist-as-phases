@@ -1,14 +1,14 @@
 /* Copyright start
   MIT License
-  Copyright (c) 2024 Fortinet Inc
+  Copyright (c) 2025 Fortinet Inc
   Copyright end */
 'use strict';
 
-angular.module('cybersponse').controller('picklistAsPhases101Ctrl', picklistAsPhases101Ctrl);
+angular.module('cybersponse').controller('picklistAsPhases110Ctrl', picklistAsPhases110Ctrl);
 
-picklistAsPhases101Ctrl.$inject = ['$scope', 'FormEntityService', '$state', '$interval', 'Modules', 'config', 'websocketService', 'picklistsService', '$rootScope', 'API', '$resource', 'widgetBasePath', '$timeout', '_'];
+picklistAsPhases110Ctrl.$inject = ['$scope', 'FormEntityService', '$state', '$interval', 'Modules', 'config', 'websocketService', 'picklistsService', '$rootScope', 'API', '$resource', 'widgetBasePath', '$timeout', '_', '$filter'];
 
-function picklistAsPhases101Ctrl($scope, FormEntityService, $state, $interval, Modules, config, websocketService, picklistsService, $rootScope, API, $resource, widgetBasePath, $timeout, _) {
+function picklistAsPhases110Ctrl($scope, FormEntityService, $state, $interval, Modules, config, websocketService, picklistsService, $rootScope, API, $resource, widgetBasePath, $timeout, _, $filter) {
   var widgetsubscription;
   $scope.config = config;
   $scope.title = '';
@@ -32,6 +32,13 @@ function picklistAsPhases101Ctrl($scope, FormEntityService, $state, $interval, M
 	$scope.entity = FormEntityService.get();
     $scope.pickListValue = $scope.entity['fields'][$scope.config.picklistItem]['value'] ? $scope.entity['fields'][$scope.config.picklistItem]['value']['itemValue'] : '';
   }
+
+  var csFieldsViewValueChangeDestroy = $scope.$on('csFields:viewValueChange', function(evt, obj) {
+    if (obj.field.type.indexOf('picklist') > -1) {
+      $scope.picklistObject = $filter('picklistOptions')($scope.picklistData, $scope.entity.fields[$scope.config.picklistItem], $scope.entity);
+      $scope.picklistObject = $scope.picklistObject.sort((a, b) => a.orderIndex - b.orderIndex);
+    }
+  });
 
   // Function to notify field change
   function notifyFieldChange(value, field) {
@@ -62,7 +69,9 @@ function picklistAsPhases101Ctrl($scope, FormEntityService, $state, $interval, M
     picklistsService
       .getPicklistByIri($scope.config.picklistFieldObjectIRI)
       .then(function (data) {
-        $scope.picklistObject = data.picklists.sort((a, b) => a.orderIndex - b.orderIndex);
+        $scope.picklistData = angular.copy(data.picklists);
+        $scope.picklistObject = $filter('picklistOptions')(data.picklists, $scope.entity.fields[$scope.config.picklistItem], $scope.entity);
+        $scope.picklistObject = $scope.picklistObject.sort((a, b) => a.orderIndex - b.orderIndex);
       })
       .catch(function (error) {
         console.error('Error fetching picklist values:', error);
@@ -70,7 +79,7 @@ function picklistAsPhases101Ctrl($scope, FormEntityService, $state, $interval, M
   }
 
   // Event listener for template refresh
-  $scope.$on('template:refresh', function (event, changedFields) {
+  var templateRefreshDestroy = $scope.$on('template:refresh', function (event, changedFields) {
     angular.forEach(changedFields, function (field) {
       // Notify the change of the field value
       $scope.notifyFieldChange(field.value, field);
@@ -84,6 +93,8 @@ function picklistAsPhases101Ctrl($scope, FormEntityService, $state, $interval, M
       websocketService.unsubscribe(widgetsubscription);
     }
     $interval.cancel($scope.timeinterval);
+    csFieldsViewValueChangeDestroy();
+    templateRefreshDestroy();
   });
 
   // Event listener for WebSocket reconnection

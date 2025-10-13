@@ -1,2 +1,2 @@
 ## What's New
-- This version is certified by QA
+- Filter criteria bug fixes.
